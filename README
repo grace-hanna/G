@@ -1,0 +1,7 @@
+# G Interpreter
+
+Build with `make`
+
+Add `alias grun="output/GIn.o"` to your bashrc
+
+Run `grun` to open a REPL, or `grun <script.g>` to run a script
