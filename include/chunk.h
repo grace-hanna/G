@@ -38,6 +38,9 @@ typedef enum {
   OP_RETURN,
   OP_CLASS,
   OP_METHOD,
+  OP_BUILD_LIST,
+  OP_INDEX_SUBSCR,
+  OP_STORE_SUBSCR,
 } OpCode;
 
 typedef struct {

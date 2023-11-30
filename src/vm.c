@@ -47,6 +47,48 @@ static void runtimeError(const char* format, ...) {
     resetStack();
 }
 
+static Value lengthNative(int argCount, Value* args) {
+    // Return the length of a list
+    if (argCount != 1 || !IS_LIST(args[0])) {
+        runtimeError("Invalid argument - length() expects a list.");
+        return NIL_VAL;
+    }
+    ObjList* list = AS_LIST(args[0]);
+    
+    return NUMBER_VAL(list->count);
+}
+
+static Value appendNative(int argCount, Value* args) {
+    // Append a value to the end of a list increasing the list's length by 1
+    if (argCount != 2 || !IS_LIST(args[0])) {
+        runtimeError("Invalid argument - append() expects a list and a value.");
+        return NIL_VAL;
+    }
+    ObjList* list = AS_LIST(args[0]);
+    Value item = args[1];
+    appendToList(list, item);
+    return NIL_VAL;
+}
+
+static Value deleteNative(int argCount, Value* args) {
+    // Delete an item from a list at the given index.
+    if (argCount != 2 || !IS_LIST(args[0]) || !IS_NUMBER(args[1])) {
+        runtimeError("Invalid argument - delete() expects a list and an index.");
+        return NIL_VAL;
+    }
+
+    ObjList* list = AS_LIST(args[0]);
+    int index = AS_NUMBER(args[1]);
+
+    if (!isValidListIndex(list, index)) {
+        runtimeError("Invalid index.");
+        return NIL_VAL;
+    }
+
+    deleteFromList(list, index);
+    return NIL_VAL;
+}
+
 static void defineNative(const char* name, NativeFn function) {
     push(OBJ_VAL(copyString(name, (int)strlen(name))));
     push(OBJ_VAL(newNative(function)));
@@ -69,6 +111,9 @@ void initVM() {
     initTable(&vm.strings);
     
     defineNative("clock", clockNative);
+    defineNative("length", lengthNative);
+    defineNative("append", appendNative);
+    defineNative("delete", deleteNative);
 }
 
 void freeVM() {
@@ -465,6 +510,83 @@ static InterpretResult run() {
             case OP_METHOD:
                 defineMethod(READ_STRING());
                 break;
+            case OP_BUILD_LIST: {
+                // Start with all the list items on the stack
+                // Result: just the list on the stack
+                ObjList* list = newList();
+                uint8_t itemCount = READ_BYTE();  // list length is an operand
+
+                push(OBJ_VAL(list));  // So it's not swept up by the GC during appendToList
+                for (int i = itemCount; i > 0; i--) {
+                    appendToList(list, peek(i));
+                }
+                pop();
+
+                while (itemCount-- > 0) {
+                    pop();
+                }
+
+                push(OBJ_VAL(list));
+                break;
+            }
+            case OP_INDEX_SUBSCR: {
+                // Access an item at a given index
+                // Stack before: [list][index]
+                // Stack after: [value at index]
+                Value indexVal = pop();
+                Value listVal = pop();
+                Value result;
+                
+                if (!IS_LIST(listVal)) {
+                    runtimeError("Cannot index into something that's not a list.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                ObjList* list = AS_LIST(listVal);
+                
+                if (!IS_NUMBER(indexVal)) {
+                    runtimeError("List index is not a number.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                int index = AS_NUMBER(indexVal);
+                
+                if (!isValidListIndex(list, index)) {
+                    runtimeError("List index out of range.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                
+                result = indexFromList(list, index);
+                push(result);
+                break;
+            }
+            case OP_STORE_SUBSCR: {
+                // Store a value at a given index in the list
+                // Stack before: [list][index][item]
+                // Stack after: [item]
+                Value item = pop();
+                Value indexVal = pop();
+                Value listVal = pop();
+                
+                if (!IS_LIST(listVal)) {
+                    runtimeError("Cannot store value in something that's not a list.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                ObjList* list = AS_LIST(listVal);
+                
+                if (!IS_NUMBER(indexVal)) {
+                    runtimeError("List index is not a number.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                int index = AS_NUMBER(indexVal);
+                
+                if (!isValidListIndex(list, index)) {
+                    runtimeError("List index out of range.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                
+                storeToList(list, index, item);
+                push(item);
+                break;
+            }
         }
     }
 #undef READ_BYTE
