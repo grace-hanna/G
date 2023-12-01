@@ -16,3 +16,7 @@ print foo;
 
 print "Length of list:";
 print length(foo);
+
+var bar_as_str = "Hello";
+var bar_as_list = str_to_list(bar_as_str);
+print (bar_as_list);

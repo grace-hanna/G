@@ -89,6 +89,22 @@ static Value deleteNative(int argCount, Value* args) {
     return NIL_VAL;
 }
 
+static Value strToListNative(int argCount, Value* args) {
+    if (argCount != 1 || !IS_STRING(args[0])) {
+        runtimeError("Invalid argument - str_to_list() expects a string.");
+        return NIL_VAL;
+    }
+    char* cstring = AS_CSTRING(args[0]);
+    int len = AS_STRING(args[0])->length;
+
+    ObjList* list = newList();
+    for (int ii=0; ii < len; ii++) {
+        ObjString* char_as_string = copyString(&cstring[ii], 1);
+        appendToList(list, OBJ_VAL(char_as_string));
+    }
+    return OBJ_VAL(list);
+}
+
 static void defineNative(const char* name, NativeFn function) {
     push(OBJ_VAL(copyString(name, (int)strlen(name))));
     push(OBJ_VAL(newNative(function)));
@@ -114,6 +130,7 @@ void initVM() {
     defineNative("length", lengthNative);
     defineNative("append", appendNative);
     defineNative("delete", deleteNative);
+    defineNative("str_to_list", strToListNative);
 }
 
 void freeVM() {
