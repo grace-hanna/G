@@ -63,9 +63,9 @@ typedef struct Compiler {
     ObjFunction* function;
     FunctionType type;
 
-    Local locals[UINT8_COUNT];
+    Local locals[UINT16_COUNT];
     int localCount;
-    Upvalue upvalues[UINT8_COUNT];
+    Upvalue upvalues[UINT16_COUNT];
     int scopeDepth;
 } Compiler;
 
@@ -177,7 +177,7 @@ static void emitReturn() {
 
 static uint8_t makeConstant(Value value) {
     int constant = addConstant(currentChunk(), value);
-    if (constant > UINT8_MAX) {
+    if (constant > UINT16_MAX) {
       error("Too many constants in one chunk.");
       return 0;
     }   
@@ -302,7 +302,7 @@ static int addUpvalue(Compiler* compiler, uint8_t index, bool isLocal) {
         }
     }
     
-    if (upvalueCount == UINT8_COUNT) {
+    if (upvalueCount == UINT16_COUNT) {
         error("Too many closure variables in function.");
         return 0;
     }
@@ -332,7 +332,7 @@ static int resolveUpvalue(Compiler* compiler, Token* name) {
 }
 
 static void addLocal(Token name) {
-    if (current->localCount == UINT8_COUNT) {
+    if (current->localCount == UINT16_COUNT) {
         error("Too many local variables in function.");
         return;
     }
@@ -367,8 +367,8 @@ static uint8_t argumentList() {
     if (!check(TOKEN_RIGHT_PAREN)) {
         do {
             expression();
-            if (argCount == 255) {
-                error("Can't have more than 255 arguments.");
+            if (argCount == 65535) {
+                error("Can't have more than 65535 arguments.");
             }
             argCount++;
         } while (match(TOKEN_COMMA));
@@ -555,8 +555,8 @@ static void list(bool canAssign) {
             
             parsePrecedence(PREC_OR);
             
-            if (itemCount == UINT8_COUNT) {
-                error("Cannot have more than 256 items in a list literal");
+            if (itemCount == UINT16_COUNT) {
+                error("Cannot have more than 65536 items in a list literal");
             }
             itemCount++;
         } while (match(TOKEN_COMMA));
@@ -703,8 +703,8 @@ static void function(FunctionType type) {
     if (!check(TOKEN_RIGHT_PAREN)) {
         do {
             current->function->arity++;
-            if (current->function->arity > 255) {
-                errorAtCurrent("Can't have more than 255 parameters.");
+            if (current->function->arity > 65535) {
+                errorAtCurrent("Can't have more than 65535 parameters.");
             }
             uint8_t constant = parseVariable("Expect parameter name.");
             defineVariable(constant);
